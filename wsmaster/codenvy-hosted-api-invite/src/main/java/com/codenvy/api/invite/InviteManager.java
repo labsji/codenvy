@@ -95,6 +95,13 @@ public class InviteManager {
         }
     }
 
+    public Invite getInvite(String domainId, String instanceId, String email) throws NotFoundException, ServerException {
+        requireNonNull(domainId, "Required non-null domain id");
+        requireNonNull(instanceId, "Required non-null instance id");
+        requireNonNull(email, "Required non-null email");
+        return inviteDao.getInvite(domainId, instanceId, email);
+    }
+
     /**
      * Returns invites for specified email.
      *

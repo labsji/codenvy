@@ -16,6 +16,7 @@ package com.codenvy.plugin.webhooks;
 
 import com.codenvy.plugin.webhooks.connectors.Connector;
 import com.codenvy.plugin.webhooks.connectors.JenkinsConnector;
+import com.codenvy.plugin.webhooks.dto.JenkinsEvent;
 
 import org.eclipse.che.api.auth.shared.dto.Token;
 import org.eclipse.che.api.core.ForbiddenException;
@@ -25,10 +26,12 @@ import org.eclipse.che.api.factory.shared.dto.FactoryDto;
 import org.eclipse.che.api.workspace.shared.dto.ProjectConfigDto;
 import org.eclipse.che.api.workspace.shared.dto.SourceStorageDto;
 import org.eclipse.che.commons.subject.Subject;
+import org.eclipse.che.dto.server.DtoFactory;
 import org.eclipse.che.inject.ConfigurationProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.servlet.ServletInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -55,6 +58,8 @@ public abstract class BaseWebhookService extends Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(BaseWebhookService.class);
 
+    protected static final String JENKINS_EVENT = "Jenkins-Event";
+
     private static final String JENKINS_CONNECTOR_PREFIX_PATTERN    = "env.CODENVY_JENKINS_CONNECTOR_.+";
     private static final String JENKINS_CONNECTOR_URL_SUFFIX        = "_URL";
     private static final String JENKINS_CONNECTOR_FACTORY_ID_SUFFIX = "_FACTORY_ID";
@@ -80,6 +85,11 @@ public abstract class BaseWebhookService extends Service {
         this.password = password;
     }
 
+    protected void handleBuildFailed(ServletInputStream inputStream) throws IOException {
+        JenkinsEvent event = DtoFactory.getInstance().createDtoFromJson(inputStream, JenkinsEvent.class);
+
+    }
+
     /**
      * Get factories that contain a project for given repository and branch
      *
@@ -94,6 +104,33 @@ public abstract class BaseWebhookService extends Service {
     protected List<FactoryDto> getFactoriesForRepositoryAndBranch(final Set<String> factoryIDs, final String headRepositoryUrl,
                                                                   final String headBranch,
                                                                   final CloneUrlMatcher matcher) throws ServerException {
+        List<FactoryDto> factories = new ArrayList<>();
+        for (String factoryID : factoryIDs) {
+            factories.add(factoryConnection.getFactory(factoryID));
+        }
+
+        return factories.stream()
+                        .filter(f -> (f != null)
+                                     && (f.getWorkspace().getProjects()
+                                          .stream()
+                                          .anyMatch(p -> matcher.isCloneUrlMatching(p, headRepositoryUrl, headBranch))))
+                        .collect(toList());
+    }
+
+    /**
+     * Get factories that contain a project for given repository and branch
+     *
+     * @param headRepositoryUrl
+     *         repository that factory project must match
+     * @param headBranch
+     *         branch that factory project must match
+     * @return list of factories that contain a project for given repository and branch
+     */
+    protected List<FactoryDto> getFailedFactoriesForRepositoryAndBranch(final String headRepositoryUrl,
+                                                                        final String headBranch,
+                                                                        final CloneUrlMatcher matcher) throws ServerException {
+        factoryConnection.findFactory()
+
         List<FactoryDto> factories = new ArrayList<>();
         for (String factoryID : factoryIDs) {
             factories.add(factoryConnection.getFactory(factoryID));

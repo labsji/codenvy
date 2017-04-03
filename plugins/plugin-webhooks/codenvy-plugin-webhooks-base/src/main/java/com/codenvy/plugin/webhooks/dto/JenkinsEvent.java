@@ -12,28 +12,21 @@
  * is strictly forbidden unless prior written permission is obtained
  * from Codenvy S.A..
  */
-package com.codenvy.plugin.webhooks.connectors;
+package com.codenvy.plugin.webhooks.dto;
 
-/**
- * Connect to a third-party service in order to add Codenvy factory related data
- *
- * @author Stephane Tournie
- */
-public interface Connector {
+import org.eclipse.che.dto.shared.DTO;
 
-    /**
-     * Add a factory link to the third-party service
-     *
-     * @param factoryUrl
-     *         the factory URL to add
-     */
-    void addFactoryLink(String factoryUrl);
+@DTO
+public interface JenkinsEvent {
+    String getRepositoryUrl();
 
-    /**
-     * Add a factory link to the third-party service
-     *
-     * @param factoryUrl
-     *         the factory URL to add
-     */
-    void addBuildFailedFactoryLink(String factoryUrl);
+    void setRepositoryUrl(String repositoryUrl);
+
+    String getBranch();
+
+    void setBranch(String branch);
+
+    String getCommitId();
+
+    void setCommitId(String commitId);
 }

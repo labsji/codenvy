@@ -99,6 +99,24 @@ public class JenkinsConnector implements Connector {
         });
     }
 
+    @Override
+    public void addBuildFailedFactoryLink(String factoryUrl) {
+        Optional<String> jobConfigXml = getCurrentJenkinsJobConfiguration();
+        jobConfigXml.ifPresent(xml -> {
+            Optional<Document> configDocument = xmlToDocument(xml);
+            configDocument.ifPresent(doc -> {
+                Element root = doc.getDocumentElement();
+                Node descriptionNode = root.getElementsByTagName("description").item(0);
+
+                if (!descriptionNode.getTextContent().contains(factoryUrl)) {
+                    updateJenkinsJobDescription(factoryUrl, doc, descriptionNode);
+                } else {
+                    LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
+                }
+            });
+        });
+    }
+
     protected Optional<String> getCurrentJenkinsJobConfiguration() {
         try {
             URL url = new URL(jobConfigXmlUrl);

@@ -116,9 +116,9 @@ public class DockerEnvironmentBackupManager implements EnvironmentBackupManager 
                 // may happen if WS is no longer in RUNNING state
                 return;
             }
+            // machine that is not in running state can be just a stub and should not be casted
             DockerInstance dockerDevMachine = (DockerInstance)workspaceManager.getMachineInstance(workspaceId,
                                                                                                   devMachine.getId());
-            // machine that is not in running state can be just a stub and should not be casted
             String nodeHost = dockerDevMachine.getNode().getHost();
             String destPath = workspaceIdHashLocationFinder.calculateDirPath(backupsRootDir, workspaceId).toString();
             String srcUserName = getUserName(workspaceId, dockerDevMachine.getContainer()).name;
@@ -312,14 +312,15 @@ public class DockerEnvironmentBackupManager implements EnvironmentBackupManager 
                     "Restoring of workspace " + workspaceId + " filesystem terminated due to timeout on "
                     + destAddress + " node.");
         } catch (InterruptedException e) {
-            LOG.error(e.getLocalizedMessage(), e);
+            Thread.currentThread().interrupt();
             throw new ServerException(
                     "Restoring of workspace " + workspaceId + " filesystem interrupted on " + destAddress + " node.");
         } catch (IOException e) {
-            LOG.error(e.getLocalizedMessage(), e);
-            throw new ServerException(
-                    "Restoring of workspace " + workspaceId + " filesystem terminated on " + destAddress + " node. "
-                    + e.getLocalizedMessage());
+            String error = "Restoring of workspace " + workspaceId +
+                           " filesystem terminated on " + destAddress + " node. "
+                           + e.getLocalizedMessage();
+            LOG.error(error, e);
+            throw new ServerException(error);
         } finally {
             lock.unlock();
             if (!restored) {

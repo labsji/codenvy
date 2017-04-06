@@ -71,10 +71,6 @@
             <artifactId>codenvy-plugin-microsoft-vsts-ext-shared</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.codenvy.plugin</groupId>
-            <artifactId>codenvy-plugin-pullrequest-server</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>

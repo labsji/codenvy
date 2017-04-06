@@ -160,7 +160,6 @@ export class CodenvyTeam {
    * @param user
    */
   processTeams(teams: Array<any>, user: any): void {
-    debugger;
     this.teamsMap = new Map();
     this.teams = [];
     this.cheNamespaceRegistry.getNamespaces().length = 0;

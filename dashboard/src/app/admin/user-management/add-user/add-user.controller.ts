@@ -15,7 +15,6 @@
 'use strict';
 import {LicenseMessagesService} from '../../../onprem/license-messages/license-messages.service';
 import {AdminsUserManagementCtrl} from '../user-management.controller';
-import {CodenvyLicense} from '../../../../components/api/codenvy-license.factory';
 
 
 /**
@@ -26,7 +25,6 @@ export class AdminsAddUserController {
   $mdDialog: ng.material.IDialogService;
   cheNotification: any;
   cheUser: any;
-  codenvyLicense: CodenvyLicense;
   callbackController: AdminsUserManagementCtrl;
   licenseMessagesService: LicenseMessagesService;
   newUserName: string;
@@ -37,7 +35,7 @@ export class AdminsAddUserController {
    * Default constructor.
    * @ngInject for Dependency injection
    */
-  constructor($mdDialog: ng.material.IDialogService, cheUser: any, codenvyLicense: CodenvyLicense, cheNotification: any,
+  constructor($mdDialog: ng.material.IDialogService, cheUser: any, cheNotification: any,
               licenseMessagesService: LicenseMessagesService) {
     this.$mdDialog = $mdDialog;
     this.cheUser = cheUser;
@@ -59,7 +57,6 @@ export class AdminsAddUserController {
     let promise = this.cheUser.createUser(this.newUserName, this.newUserEmail, this.newUserPassword);
 
     promise.then(() => {
-      this.codenvyLicense.fetchLicenseLegality();//fetch license legality
       this.$mdDialog.hide();
       this.callbackController.updateUsers();
       this.cheNotification.showInfo('User successfully created.');

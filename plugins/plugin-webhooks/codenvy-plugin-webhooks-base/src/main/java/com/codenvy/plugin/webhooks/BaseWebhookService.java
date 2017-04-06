@@ -19,19 +19,25 @@ import com.codenvy.plugin.webhooks.connectors.JenkinsConnector;
 import com.codenvy.plugin.webhooks.dto.JenkinsEvent;
 
 import org.eclipse.che.api.auth.shared.dto.Token;
+import org.eclipse.che.api.core.ConflictException;
 import org.eclipse.che.api.core.ForbiddenException;
+import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
+import org.eclipse.che.api.core.model.factory.Factory;
 import org.eclipse.che.api.core.rest.Service;
+import org.eclipse.che.api.factory.server.FactoryManager;
 import org.eclipse.che.api.factory.shared.dto.FactoryDto;
+import org.eclipse.che.api.user.server.UserManager;
 import org.eclipse.che.api.workspace.shared.dto.ProjectConfigDto;
 import org.eclipse.che.api.workspace.shared.dto.SourceStorageDto;
+import org.eclipse.che.commons.lang.Pair;
 import org.eclipse.che.commons.subject.Subject;
-import org.eclipse.che.dto.server.DtoFactory;
 import org.eclipse.che.inject.ConfigurationProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletInputStream;
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -48,6 +54,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
+import static java.util.Collections.singletonList;
 
 /**
  * Webhooks handler
@@ -67,6 +74,16 @@ public abstract class BaseWebhookService extends Service {
 
     protected static final String FACTORY_URL_REL = "accept-named";
 
+    @Inject
+    private FactoryManager factoryManager;
+
+    @Inject
+    private UserManager userManager;
+
+    @Inject
+    @Named("che.api")
+    private String baseUrl;
+
     private final AuthConnection          authConnection;
     private final FactoryConnection       factoryConnection;
     private final ConfigurationProperties configurationProperties;
@@ -83,11 +100,6 @@ public abstract class BaseWebhookService extends Service {
         this.configurationProperties = configurationProperties;
         this.username = username;
         this.password = password;
-    }
-
-    protected void handleBuildFailed(ServletInputStream inputStream) throws IOException {
-        JenkinsEvent event = DtoFactory.getInstance().createDtoFromJson(inputStream, JenkinsEvent.class);
-
     }
 
     /**
@@ -117,31 +129,56 @@ public abstract class BaseWebhookService extends Service {
                         .collect(toList());
     }
 
-    /**
-     * Get factories that contain a project for given repository and branch
-     *
-     * @param headRepositoryUrl
-     *         repository that factory project must match
-     * @param headBranch
-     *         branch that factory project must match
-     * @return list of factories that contain a project for given repository and branch
-     */
-    protected List<FactoryDto> getFailedFactoriesForRepositoryAndBranch(final String headRepositoryUrl,
-                                                                        final String headBranch,
-                                                                        final CloneUrlMatcher matcher) throws ServerException {
-        factoryConnection.findFactory()
+    protected void updateFailedFactoriesForRepositoryAndBranch(Set<String> factoryIDs, JenkinsEvent jenkinsEvent) throws ServerException,
+                                                                                                                         ConflictException,
+                                                                                                                         NotFoundException {
+        LOG.debug("{}", jenkinsEvent);
 
-        List<FactoryDto> factories = new ArrayList<>();
-        for (String factoryID : factoryIDs) {
-            factories.add(factoryConnection.getFactory(factoryID));
+        String repositoryUrl = jenkinsEvent.getRepositoryUrl();
+        String branch = jenkinsEvent.getBranch();
+        String commitId = jenkinsEvent.getCommitId();
+
+        List<Factory> factories = new ArrayList<>();
+        List<Factory> request;
+        int skipCount = 0;
+        do {
+            request = factoryManager.getByAttribute(30, skipCount, singletonList(Pair.of("creator.userId",
+                                                                                         userManager.getByName(username).getId())));
+            factories.addAll(request);
+            skipCount += request.size();
+        } while (!request.isEmpty());
+
+
+        List<Factory> failedFactories =
+                factories.stream()
+                         .filter(f -> f.getWorkspace()
+                                       .getProjects()
+                                       .stream()
+                                       .anyMatch(workspace -> repositoryUrl.equals(workspace.getSource().getLocation()) &&
+                                                              commitId.equals(workspace.getSource().getParameters().get("commitId"))))
+                         .collect(toList());
+        if (failedFactories.isEmpty()) {
+            List<FactoryDto> baseFactories = getFactoriesForRepositoryAndBranch(factoryIDs,
+                                                                                repositoryUrl,
+                                                                                branch,
+                                                                                DEFAULT_CLONE_URL_MATCHER);
+            for (FactoryDto factoryDto : baseFactories) {
+                FactoryDto updatedFactory = updateProjectInFactory(factoryDto,
+                                                                   repositoryUrl,
+                                                                   branch,
+                                                                   repositoryUrl,
+                                                                   commitId,
+                                                                   DEFAULT_CLONE_URL_MATCHER);
+                updatedFactory.setName("failed" + updatedFactory.getName());
+                failedFactories.add(factoryManager.saveFactory(updatedFactory));
+            }
         }
 
-        return factories.stream()
-                        .filter(f -> (f != null)
-                                     && (f.getWorkspace().getProjects()
-                                          .stream()
-                                          .anyMatch(p -> matcher.isCloneUrlMatching(p, headRepositoryUrl, headBranch))))
-                        .collect(toList());
+        for (Factory factory : failedFactories) {
+            List<Connector> connectors = getConnectorsByUrl(jenkinsEvent.getJenkinsUrl());
+            connectors.forEach(connector -> connector
+                    .addBuildFailedFactoryLink(baseUrl.substring(0, baseUrl.indexOf("/api")) + "/f?id=" + factory.getId()));
+        }
     }
 
     /**
@@ -242,6 +279,31 @@ public abstract class BaseWebhookService extends Service {
         return connectors.stream()
                          .map(connector -> createJenkinsConnector(properties, connector))
                          .collect(toList());
+    }
+
+    /**
+     * Get all configured connectors by url.
+     *
+     * @param connectorUrl
+     *         url of the connector
+     * @return the list of all configured connectors that mach given url.
+     */
+    private List<Connector> getConnectorsByUrl(String connectorUrl) throws ServerException {
+
+        Map<String, String> properties = configurationProperties.getProperties(JENKINS_CONNECTOR_PREFIX_PATTERN);
+
+        Set<String> connectors =
+                properties.entrySet()
+                          .stream()
+                          .filter(entry -> entry.getValue().contains(connectorUrl.substring(connectorUrl.indexOf("://") + 3)))
+                          .map(entry -> entry.getKey().substring(0, entry.getKey().lastIndexOf(JENKINS_CONNECTOR_URL_SUFFIX)))
+                          .collect(Collectors.toSet());
+
+        if (connectors.isEmpty()) {
+            LOG.error("No connectors was registered for url {}", connectorUrl);
+        }
+
+        return connectors.stream().map(connector -> createJenkinsConnector(properties, connector)).collect(toList());
     }
 
     private JenkinsConnector createJenkinsConnector(Map<String, String> properties, String connector) {

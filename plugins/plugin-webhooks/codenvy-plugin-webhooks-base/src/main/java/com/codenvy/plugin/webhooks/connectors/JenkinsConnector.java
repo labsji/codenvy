@@ -75,6 +75,17 @@ public class JenkinsConnector implements Connector {
         this.jobConfigXmlUrl = url + "/job/" + jobName + "/config.xml";
     }
 
+    private Node getDescriptionNode(String factoryUrl) {
+        if (getCurrentJenkinsJobConfiguration().isPresent() &&
+            xmlToDocument(getCurrentJenkinsJobConfiguration().get()).isPresent()) {
+            return xmlToDocument(getCurrentJenkinsJobConfiguration().get()).get()
+                                                                           .getDocumentElement()
+                                                                           .getElementsByTagName("description")
+                                                                           .item(0);
+        }
+        return null;
+    }
+
     /**
      * Add a factory link to configured Jenkins job
      *
@@ -107,8 +118,10 @@ public class JenkinsConnector implements Connector {
             configDocument.ifPresent(doc -> {
                 Element root = doc.getDocumentElement();
                 Node descriptionNode = root.getElementsByTagName("description").item(0);
-
-                if (!descriptionNode.getTextContent().contains(factoryUrl)) {
+                String content = descriptionNode.getTextContent();
+                if (!content.contains(factoryUrl)) {
+                    content = content.substring(0, content.indexOf("\n") > 0 ? content.indexOf("\n") : content.length());
+                    descriptionNode.setTextContent(content + "\n" + "build brake factory: <a href=\"" + factoryUrl + "\">" + factoryUrl + "</a>");
                     updateJenkinsJobDescription(factoryUrl, doc, descriptionNode);
                 } else {
                     LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
@@ -117,7 +130,7 @@ public class JenkinsConnector implements Connector {
         });
     }
 
-    protected Optional<String> getCurrentJenkinsJobConfiguration() {
+    private Optional<String> getCurrentJenkinsJobConfiguration() {
         try {
             URL url = new URL(jobConfigXmlUrl);
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
@@ -158,9 +171,7 @@ public class JenkinsConnector implements Connector {
         return Optional.empty();
     }
 
-    protected void updateJenkinsJobDescription(String factoryUrl, Document configDocument, Node descriptionNode) {
-        String descriptionContent = descriptionNode.getTextContent();
-        descriptionNode.setTextContent(descriptionContent + "\n" + "<a href=\"" + factoryUrl + "\">" + factoryUrl + "</a>");
+    private void updateJenkinsJobDescription(String factoryUrl, Document configDocument, Node descriptionNode) {
         String updatedJobConfigXml = documentToXml(configDocument);
         try {
             URL url = new URL(jobConfigXmlUrl);
@@ -220,7 +231,7 @@ public class JenkinsConnector implements Connector {
         return writer.toString();
     }
 
-    protected Optional<Document> xmlToDocument(String jobConfigXml) {
+    private Optional<Document> xmlToDocument(String jobConfigXml) {
         Document document = null;
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

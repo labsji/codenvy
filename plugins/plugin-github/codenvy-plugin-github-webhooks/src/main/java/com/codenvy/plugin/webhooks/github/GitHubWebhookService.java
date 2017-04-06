@@ -28,6 +28,8 @@ import com.codenvy.plugin.webhooks.dto.JenkinsEvent;
 import com.codenvy.plugin.webhooks.github.shared.PullRequestEvent;
 import com.codenvy.plugin.webhooks.github.shared.PushEvent;
 
+import org.eclipse.che.api.core.ConflictException;
+import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
 import org.eclipse.che.api.factory.shared.dto.FactoryDto;
@@ -120,52 +122,16 @@ public class GitHubWebhookService extends BaseWebhookService {
                             break;
                     }
                 } else if (!isNullOrEmpty(jenkinsHeader)) {
-                    handleBuildFailedEvent(DtoFactory.getInstance().createDtoFromJson(inputStream, JenkinsEvent.class));
+                    JenkinsEvent jenkinsEvent = DtoFactory.getInstance().createDtoFromJson(inputStream, JenkinsEvent.class);
+                    updateFailedFactoriesForRepositoryAndBranch(getWebhookConfiguredFactoriesIDs(jenkinsEvent.getRepositoryUrl()), jenkinsEvent);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | ConflictException | NotFoundException e) {
             LOG.error(e.getLocalizedMessage());
             throw new ServerException(e.getLocalizedMessage());
         }
 
         return response;
-    }
-
-    private void handleBuildFailedEvent(JenkinsEvent jenkinsEvent) throws ServerException {
-        LOG.debug("{}", jenkinsEvent);
-
-        // Set current Codenvy user
-        EnvironmentContext.getCurrent().setSubject(new TokenSubject());
-
-        // Get contribution data
-        final String contribRepositoryHtmlUrl = jenkinsEvent.getRepositoryUrl();
-        final String contribBranch = jenkinsEvent.getBranch();
-
-        // Get factories id's that are configured in a webhook
-        final Set<String> factoriesIDs = getWebhookConfiguredFactoriesIDs(contribRepositoryHtmlUrl);
-
-        // Get factories that contain a project for given repository and branch
-        final List<FactoryDto> factories = getFailedFactoriesForRepositoryAndBranch(factoriesIDs,
-                                                                                    contribRepositoryHtmlUrl,
-                                                                                    contribBranch,
-                                                                                    DEFAULT_CLONE_URL_MATCHER);
-        if (factories.isEmpty()) {
-            throw new ServerException("No factory found for repository " + contribRepositoryHtmlUrl + " and branch " + contribBranch);
-        }
-
-        for (FactoryDto f : factories) {
-            // Get 'open factory' URL
-            final Link factoryLink = f.getLink(FACTORY_URL_REL);
-            if (factoryLink == null) {
-                throw new ServerException("Factory " + f.getId() + " do not contain mandatory \'" + FACTORY_URL_REL + "\' link");
-            }
-
-            // Get connectors configured for the factory
-            final List<Connector> connectors = getConnectors(f.getId());
-
-            // Add factory link within third-party services
-            connectors.forEach(connector -> connector.addBuildFailedFactoryLink(factoryLink.getHref()));
-        }
     }
 
     /**

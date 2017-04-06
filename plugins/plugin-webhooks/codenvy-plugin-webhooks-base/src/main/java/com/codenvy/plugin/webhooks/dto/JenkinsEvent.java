@@ -29,4 +29,12 @@ public interface JenkinsEvent {
     String getCommitId();
 
     void setCommitId(String commitId);
+
+    String getJenkinsUrl();
+
+    void setJenkinsUrl(String jenkinsUrl);
+
+    String getJenkinsJobName();
+
+    void setJenkinsJobName(String jenkinsJobName);
 }

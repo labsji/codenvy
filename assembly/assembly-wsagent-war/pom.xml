@@ -29,7 +29,6 @@
         <dependency>
             <groupId>com.codenvy.onpremises.wsagent</groupId>
             <artifactId>codenvy-wsagent-core</artifactId>
-            <version>${project.version}</version>
             <type>war</type>
         </dependency>
         <dependency>

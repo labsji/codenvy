@@ -12,7 +12,7 @@
  * is strictly forbidden unless prior written permission is obtained
  * from Codenvy S.A..
  */
-package com.codenvy.plugin.webhooks.dto;
+package com.codenvy.plugin.jenkins.webhooks.shared;
 
 import org.eclipse.che.dto.shared.DTO;
 

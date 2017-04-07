@@ -101,7 +101,7 @@ public final class DtoConverter {
             case MEMBER_REMOVED:
                 return asDto((MemberRemovedEvent)event);
             default:
-                throw new IllegalArgumentException("Can't convert event to dto, event type '" + event.getType() + "' is unknown");
+                throw new IllegalArgumentException("Can't convert event to shared, event type '" + event.getType() + "' is unknown");
         }
     }
 }

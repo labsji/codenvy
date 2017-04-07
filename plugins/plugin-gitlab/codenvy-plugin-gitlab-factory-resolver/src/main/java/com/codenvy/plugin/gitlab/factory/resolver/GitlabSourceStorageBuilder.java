@@ -39,7 +39,7 @@ public class GitlabSourceStorageBuilder {
      * @return newly created source storage DTO object
      */
     public SourceStorageDto build(GitlabUrl gitlabUrl) {
-        // Create map for source storage dto
+        // Create map for source storage shared
         Map<String, String> parameters = new HashMap<>();
         parameters.put("branch", gitlabUrl.getBranch());
 

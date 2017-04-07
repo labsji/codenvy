@@ -19,7 +19,6 @@ import com.google.common.io.CharStreams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
@@ -28,9 +27,7 @@ import javax.ws.rs.core.MediaType;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayInputStream;
@@ -42,10 +39,12 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.rmi.ServerException;
 import java.util.Base64;
-import java.util.Optional;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
+import static javax.xml.transform.TransformerFactory.newInstance;
+import static org.eclipse.che.commons.lang.IoUtil.readAndCloseQuietly;
 
 /**
  * Jenkins implementation of {@link Connector}
@@ -75,17 +74,6 @@ public class JenkinsConnector implements Connector {
         this.jobConfigXmlUrl = url + "/job/" + jobName + "/config.xml";
     }
 
-    private Node getDescriptionNode(String factoryUrl) {
-        if (getCurrentJenkinsJobConfiguration().isPresent() &&
-            xmlToDocument(getCurrentJenkinsJobConfiguration().get()).isPresent()) {
-            return xmlToDocument(getCurrentJenkinsJobConfiguration().get()).get()
-                                                                           .getDocumentElement()
-                                                                           .getElementsByTagName("description")
-                                                                           .item(0);
-        }
-        return null;
-    }
-
     /**
      * Add a factory link to configured Jenkins job
      *
@@ -93,155 +81,111 @@ public class JenkinsConnector implements Connector {
      *         the factory URL to add
      */
     @Override
-    public void addFactoryLink(String factoryUrl) {
-        Optional<String> jobConfigXml = getCurrentJenkinsJobConfiguration();
-        jobConfigXml.ifPresent(xml -> {
-            Optional<Document> configDocument = xmlToDocument(xml);
-            configDocument.ifPresent(doc -> {
-                Element root = doc.getDocumentElement();
-                Node descriptionNode = root.getElementsByTagName("description").item(0);
+    public void addFactoryLink(String factoryUrl) throws IOException {
+        Document configDocument = xmlToDocument(getCurrentJenkinsJobConfiguration());
+        Node descriptionNode = configDocument.getDocumentElement().getElementsByTagName("description").item(0);
 
-                if (!descriptionNode.getTextContent().contains(factoryUrl)) {
-                    updateJenkinsJobDescription(factoryUrl, doc, descriptionNode);
-                } else {
-                    LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
-                }
-            });
-        });
+        if (!descriptionNode.getTextContent().contains(factoryUrl)) {
+            updateJenkinsJobDescription(factoryUrl, configDocument);
+        } else {
+            LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
+        }
     }
 
     @Override
-    public void addBuildFailedFactoryLink(String factoryUrl) {
-        Optional<String> jobConfigXml = getCurrentJenkinsJobConfiguration();
-        jobConfigXml.ifPresent(xml -> {
-            Optional<Document> configDocument = xmlToDocument(xml);
-            configDocument.ifPresent(doc -> {
-                Element root = doc.getDocumentElement();
-                Node descriptionNode = root.getElementsByTagName("description").item(0);
-                String content = descriptionNode.getTextContent();
-                if (!content.contains(factoryUrl)) {
-                    content = content.substring(0, content.indexOf("\n") > 0 ? content.indexOf("\n") : content.length());
-                    descriptionNode.setTextContent(content + "\n" + "build brake factory: <a href=\"" + factoryUrl + "\">" + factoryUrl + "</a>");
-                    updateJenkinsJobDescription(factoryUrl, doc, descriptionNode);
-                } else {
-                    LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
-                }
-            });
-        });
-    }
-
-    private Optional<String> getCurrentJenkinsJobConfiguration() {
-        try {
-            URL url = new URL(jobConfigXmlUrl);
-            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-            try {
-                if (url.getUserInfo() != null) {
-                    String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
-                    connection.setRequestProperty("Authorization", basicAuth);
-                }
-                connection.setRequestMethod("GET");
-                connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, APPLICATION_XML);
-                final int responseCode = connection.getResponseCode();
-                if ((responseCode / 100) != 2) {
-                    InputStream in = connection.getErrorStream();
-                    if (in == null) {
-                        in = connection.getInputStream();
-                    }
-                    final String str;
-                    try (Reader reader = new InputStreamReader(in)) {
-                        str = CharStreams.toString(reader);
-                    }
-                    throw new IOException(str);
-                }
-                try (Reader reader = new InputStreamReader(connection.getInputStream())) {
-                    return Optional.of(CharStreams.toString(reader));
-                }
-
-            } catch (IOException e) {
-                LOG.error("Can't get Jenkins job configuration", e);
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-
-        } catch (IOException e) {
-            LOG.error("Can't get Jenkins job configuration", e);
-        }
-        return Optional.empty();
-    }
-
-    private void updateJenkinsJobDescription(String factoryUrl, Document configDocument, Node descriptionNode) {
-        String updatedJobConfigXml = documentToXml(configDocument);
-        try {
-            URL url = new URL(jobConfigXmlUrl);
-            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-            try {
-                if (url.getUserInfo() != null) {
-                    String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
-                    connection.setRequestProperty("Authorization", basicAuth);
-                }
-                connection.setRequestMethod("POST");
-                connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, APPLICATION_XML);
-                connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-                connection.setDoOutput(true);
-
-                try (OutputStream output = connection.getOutputStream()) {
-                    output.write(updatedJobConfigXml.getBytes());
-                }
-                final int responseCode = connection.getResponseCode();
-                if ((responseCode / 100) != 2) {
-                    InputStream in = connection.getErrorStream();
-                    if (in == null) {
-                        in = connection.getInputStream();
-                    }
-                    final String str;
-                    try (Reader reader = new InputStreamReader(in)) {
-                        str = CharStreams.toString(reader);
-                    }
-                    LOG.error(str);
-                } else {
-                    LOG.debug("factory link {} successfully added on description of Jenkins job ", factoryUrl, jobName);
-                }
-            } catch (IOException e) {
-                LOG.error("Can't get Jenkins job configuration", e);
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-
-        } catch (IOException e) {
-            LOG.error("Can't get Jenkins job configuration", e);
+    public void addBuildFailedFactoryLink(String factoryUrl) throws IOException {
+        Document configDocument = xmlToDocument(getCurrentJenkinsJobConfiguration());
+        Node descriptionNode = configDocument.getDocumentElement().getElementsByTagName("description").item(0);
+        String content = descriptionNode.getTextContent();
+        if (!content.contains(factoryUrl)) {
+            content = content.substring(0, content.indexOf("\n") > 0 ? content.indexOf("\n") : content.length());
+            descriptionNode.setTextContent(content + "\n" + "build brake factory: <a href=\"" + factoryUrl + "\">" + factoryUrl + "</a>");
+            updateJenkinsJobDescription(factoryUrl, configDocument);
+        } else {
+            LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
         }
     }
 
-    protected String documentToXml(Document configDocument) {
-        DOMSource domSource = new DOMSource(configDocument);
-        StringWriter writer = new StringWriter();
-        StreamResult result = new StreamResult(writer);
-        TransformerFactory tf = TransformerFactory.newInstance();
-        Transformer transformer = null;
+    private String getCurrentJenkinsJobConfiguration() throws IOException {
+        URL url = new URL(jobConfigXmlUrl);
+        HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+        if (url.getUserInfo() != null) {
+            String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
+            connection.setRequestProperty("Authorization", basicAuth);
+        }
+        connection.setRequestMethod("GET");
+        connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, APPLICATION_XML);
+        final int responseCode = connection.getResponseCode();
+        if ((responseCode / 100) != 2) {
+            InputStream in = connection.getErrorStream();
+            if (in == null) {
+                in = connection.getInputStream();
+            }
+            final String str;
+            try (Reader reader = new InputStreamReader(in)) {
+                str = CharStreams.toString(reader);
+            }
+            throw new IOException(str);
+        }
+        return readAndCloseQuietly(connection.getInputStream());
+    }
+
+    private void updateJenkinsJobDescription(String factoryUrl, Document configDocument) throws IOException {
+        URL url = new URL(jobConfigXmlUrl);
+        HttpURLConnection connection = (HttpURLConnection)url.openConnection();
         try {
-            transformer = tf.newTransformer();
-            transformer.transform(domSource, result);
+            if (url.getUserInfo() != null) {
+                String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
+                connection.setRequestProperty("Authorization", basicAuth);
+            }
+            connection.setRequestMethod("POST");
+            connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, APPLICATION_XML);
+            connection.addRequestProperty(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+            connection.setDoOutput(true);
+
+            try (OutputStream output = connection.getOutputStream()) {
+                output.write(documentToXml(configDocument).getBytes());
+            }
+            final int responseCode = connection.getResponseCode();
+            if ((responseCode / 100) != 2) {
+                InputStream in = connection.getErrorStream();
+                if (in == null) {
+                    in = connection.getInputStream();
+                }
+                final String str;
+                try (Reader reader = new InputStreamReader(in)) {
+                    str = CharStreams.toString(reader);
+                }
+                LOG.error(str);
+            } else {
+                LOG.debug("factory link {} successfully added on description of Jenkins job ", factoryUrl, jobName);
+            }
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private String documentToXml(Document configDocument) throws ServerException {
+        try {
+            StringWriter writer = new StringWriter();
+            newInstance().newTransformer().transform(new DOMSource(configDocument), new StreamResult(writer));
+            return writer.toString();
         } catch (TransformerException e) {
-            e.printStackTrace();
+            throw new ServerException(e.getLocalizedMessage());
         }
-        return writer.toString();
     }
 
-    private Optional<Document> xmlToDocument(String jobConfigXml) {
-        Document document = null;
+    private Document xmlToDocument(String jobConfigXml) throws ServerException {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setNamespaceAware(true);
             DocumentBuilder builder = factory.newDocumentBuilder();
-            document = builder.parse(new ByteArrayInputStream(jobConfigXml.getBytes("utf-8")));
+            return builder.parse(new ByteArrayInputStream(jobConfigXml.getBytes("utf-8")));
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            e.printStackTrace();
+            throw new ServerException (e.getMessage());
         }
-        return Optional.ofNullable(document);
     }
 }
 

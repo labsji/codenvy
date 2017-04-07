@@ -23,6 +23,7 @@ import com.codenvy.plugin.webhooks.bitbucketserver.shared.Project;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.PushEvent;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.RefChange;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.Repository;
+import com.codenvy.plugin.webhooks.connectors.Connector;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.eclipse.che.api.core.ServerException;
@@ -136,7 +137,7 @@ public class BitbucketServerWebhookService extends BaseWebhookService {
     }
 
     @VisibleForTesting
-    void handlePushEvent(PushEvent event, String branch) throws ServerException {
+    void handlePushEvent(PushEvent event, String branch) throws ServerException, IOException {
         Repository repository = event.getRepository();
         Project project = repository.getProject();
         String cloneUrl = computeCloneUrl(project.getKey(), repository.getSlug());
@@ -147,7 +148,9 @@ public class BitbucketServerWebhookService extends BaseWebhookService {
                 LOG.warn("Factory " + factory.getId() + " do not contain mandatory \'" + FACTORY_URL_REL + "\' link");
                 continue;
             }
-            getConnectors(factory.getId()).forEach(connector -> connector.addFactoryLink(factoryLink.getHref()));
+            for (Connector connector : getConnectors(factory.getId())) {
+                connector.addFactoryLink(factoryLink.getHref());
+            }
         }
     }
 

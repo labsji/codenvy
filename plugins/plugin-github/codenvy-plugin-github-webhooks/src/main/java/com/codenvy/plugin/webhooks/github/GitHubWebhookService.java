@@ -24,12 +24,9 @@ import com.codenvy.plugin.webhooks.AuthConnection;
 import com.codenvy.plugin.webhooks.FactoryConnection;
 import com.codenvy.plugin.webhooks.BaseWebhookService;
 import com.codenvy.plugin.webhooks.connectors.Connector;
-import com.codenvy.plugin.webhooks.dto.JenkinsEvent;
 import com.codenvy.plugin.webhooks.github.shared.PullRequestEvent;
 import com.codenvy.plugin.webhooks.github.shared.PushEvent;
 
-import org.eclipse.che.api.core.ConflictException;
-import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.rest.shared.dto.Link;
 import org.eclipse.che.api.factory.shared.dto.FactoryDto;
@@ -103,7 +100,6 @@ public class GitHubWebhookService extends BaseWebhookService {
         try (ServletInputStream inputStream = request.getInputStream()) {
             if (inputStream != null) {
                 String githubHeader = request.getHeader(GITHUB_REQUEST_HEADER);
-                String jenkinsHeader = request.getHeader(JENKINS_EVENT);
                 if (!isNullOrEmpty(githubHeader)) {
                     switch (githubHeader) {
                         case "push":
@@ -121,12 +117,9 @@ public class GitHubWebhookService extends BaseWebhookService {
                                                .build();
                             break;
                     }
-                } else if (!isNullOrEmpty(jenkinsHeader)) {
-                    JenkinsEvent jenkinsEvent = DtoFactory.getInstance().createDtoFromJson(inputStream, JenkinsEvent.class);
-                    updateFailedFactoriesForRepositoryAndBranch(getWebhookConfiguredFactoriesIDs(jenkinsEvent.getRepositoryUrl()), jenkinsEvent);
                 }
             }
-        } catch (IOException | ConflictException | NotFoundException e) {
+        } catch (IOException e) {
             LOG.error(e.getLocalizedMessage());
             throw new ServerException(e.getLocalizedMessage());
         }
@@ -143,7 +136,7 @@ public class GitHubWebhookService extends BaseWebhookService {
      * HTTP 202 response if event was processed partially
      * @throws ServerException
      */
-    private void handlePushEvent(PushEvent contribution) throws ServerException {
+    private void handlePushEvent(PushEvent contribution) throws ServerException, IOException {
         LOG.debug("{}", contribution);
 
         // Set current Codenvy user
@@ -173,11 +166,10 @@ public class GitHubWebhookService extends BaseWebhookService {
                 throw new ServerException("Factory " + f.getId() + " do not contain mandatory \'" + FACTORY_URL_REL + "\' link");
             }
 
-            // Get connectors configured for the factory
-            final List<Connector> connectors = getConnectors(f.getId());
-
             // Add factory link within third-party services
-            connectors.forEach(connector -> connector.addFactoryLink(factoryLink.getHref()));
+            for (Connector connector : getConnectors(f.getId())) {
+                connector.addFactoryLink(factoryLink.getHref());
+            }
         }
     }
 

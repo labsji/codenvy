@@ -14,6 +14,8 @@
  */
 package com.codenvy.plugin.webhooks.connectors;
 
+import java.io.IOException;
+
 /**
  * Connect to a third-party service in order to add Codenvy factory related data
  *
@@ -27,7 +29,7 @@ public interface Connector {
      * @param factoryUrl
      *         the factory URL to add
      */
-    void addFactoryLink(String factoryUrl);
+    void addFactoryLink(String factoryUrl) throws IOException;
 
     /**
      * Add a factory link to the third-party service
@@ -35,5 +37,5 @@ public interface Connector {
      * @param factoryUrl
      *         the factory URL to add
      */
-    void addBuildFailedFactoryLink(String factoryUrl);
+    void addBuildFailedFactoryLink(String factoryUrl) throws IOException;
 }

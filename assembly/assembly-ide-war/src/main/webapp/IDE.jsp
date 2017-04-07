@@ -41,7 +41,7 @@
 
         window.IDE.config = {
             "restContext": "/api",
-            "cheExtensionPath": "/wsagent/ext"
+            "websocketContext": "/api/websocket"
         };
 
         /**

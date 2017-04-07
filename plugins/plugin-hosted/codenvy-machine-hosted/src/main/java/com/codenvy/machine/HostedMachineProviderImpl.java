@@ -19,8 +19,10 @@ import com.google.common.base.MoreObjects;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.eclipse.che.api.core.NotFoundException;
+import org.eclipse.che.api.core.jsonrpc.RequestTransmitter;
 import org.eclipse.che.api.core.model.machine.ServerConf;
 import org.eclipse.che.api.core.util.FileCleaner;
+import org.eclipse.che.api.core.util.JsonRpcEndpointIdsHolder;
 import org.eclipse.che.api.environment.server.model.CheServiceImpl;
 import org.eclipse.che.api.machine.server.exception.MachineException;
 import org.eclipse.che.api.machine.server.exception.SourceNotFoundException;
@@ -86,6 +88,8 @@ public class HostedMachineProviderImpl extends MachineProviderImpl {
                                      DockerMachineFactory dockerMachineFactory,
                                      DockerInstanceStopDetector dockerInstanceStopDetector,
                                      WindowsPathEscaper windowsPathEscaper,
+                                     RequestTransmitter requestTransmitter,
+                                     JsonRpcEndpointIdsHolder endpointIdsHolder,
                                      @Named("machine.docker.dev_machine.machine_servers") Set<ServerConf> devMachineServers,
                                      @Named("machine.docker.machine_servers") Set<ServerConf> allMachinesServers,
                                      @Named("machine.docker.dev_machine.machine_volumes") Set<String> devMachineSystemVolumes,
@@ -111,6 +115,8 @@ public class HostedMachineProviderImpl extends MachineProviderImpl {
               dockerCredentials,
               dockerMachineFactory,
               dockerInstanceStopDetector,
+              requestTransmitter,
+              endpointIdsHolder,
               devMachineServers,
               allMachinesServers,
               devMachineSystemVolumes,

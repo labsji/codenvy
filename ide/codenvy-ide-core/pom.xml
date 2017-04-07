@@ -32,10 +32,6 @@
             <artifactId>codenvy-hosted-machine-authentication-ide</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.codenvy.onpremises.wsmaster</groupId>
-            <artifactId>codenvy-hosted-machine-authentication-shared</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.codenvy.plugin</groupId>
             <artifactId>codenvy-hosted-ext-hosted</artifactId>
         </dependency>

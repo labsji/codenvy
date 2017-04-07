@@ -42,10 +42,5 @@ public class WsAgentServletModule extends ServletModule {
         install(new com.codenvy.auth.sso.client.deploy.SsoClientServletModule());
         serveRegex("/[^/]+/api((?!(/(ws|eventbus)($|/.*)))/.*)").with(org.everrest.guice.servlet.GuiceEverrestServlet.class);
 
-//        bind(io.swagger.jaxrs.config.DefaultJaxrsConfig.class).asEagerSingleton();
-//        serve("/swaggerinit").with(io.swagger.jaxrs.config.DefaultJaxrsConfig.class, ImmutableMap
-//                .of("api.version", "1.0",
-//                    "swagger.api.title", "Eclipse Che",
-//                    "swagger.api.basepath", "/.*/api"));
     }
 }

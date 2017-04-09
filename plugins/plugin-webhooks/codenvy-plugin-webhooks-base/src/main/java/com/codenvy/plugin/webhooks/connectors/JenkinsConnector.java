@@ -74,12 +74,6 @@ public class JenkinsConnector implements Connector {
         this.jobConfigXmlUrl = url + "/job/" + jobName + "/config.xml";
     }
 
-    /**
-     * Add a factory link to configured Jenkins job
-     *
-     * @param factoryUrl
-     *         the factory URL to add
-     */
     @Override
     public void addFactoryLink(String factoryUrl) throws IOException {
         Document configDocument = xmlToDocument(getCurrentJenkinsJobConfiguration());
@@ -88,7 +82,7 @@ public class JenkinsConnector implements Connector {
         if (!descriptionNode.getTextContent().contains(factoryUrl)) {
             updateJenkinsJobDescription(factoryUrl, configDocument);
         } else {
-            LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
+            LOG.debug("factory link {} already displayed in description of Jenkins job {}", factoryUrl, jobName);
         }
     }
 
@@ -102,7 +96,7 @@ public class JenkinsConnector implements Connector {
             descriptionNode.setTextContent(content + "\n" + "build brake factory: <a href=\"" + factoryUrl + "\">" + factoryUrl + "</a>");
             updateJenkinsJobDescription(factoryUrl, configDocument);
         } else {
-            LOG.debug("factory link {} already displayed on description of Jenkins job {}", factoryUrl, jobName);
+            LOG.debug("factory link {} already displayed in description of Jenkins job {}", factoryUrl, jobName);
         }
     }
 
@@ -184,7 +178,7 @@ public class JenkinsConnector implements Connector {
             DocumentBuilder builder = factory.newDocumentBuilder();
             return builder.parse(new ByteArrayInputStream(jobConfigXml.getBytes("utf-8")));
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new ServerException (e.getMessage());
+            throw new ServerException(e.getMessage());
         }
     }
 }

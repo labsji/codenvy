@@ -46,7 +46,7 @@ import com.codenvy.machine.backup.EnvironmentBackupManager;
 import com.codenvy.organization.api.OrganizationApiModule;
 import com.codenvy.organization.api.OrganizationJpaModule;
 import com.codenvy.plugin.gitlab.factory.resolver.GitlabFactoryParametersResolver;
-import com.codenvy.plugin.webhooks.BaseWebhookService;
+import com.codenvy.plugin.jenkins.webhooks.JenkinsWebhookService;
 import com.codenvy.report.ReportModule;
 import com.codenvy.resource.api.ResourceModule;
 import com.codenvy.service.bitbucket.BitbucketConfigurationService;
@@ -194,7 +194,7 @@ public class OnPremisesIdeApiModule extends AbstractModule {
         install(new JsonRpcModule());
 
         install(new com.codenvy.plugin.webhooks.bitbucketserver.inject.BitbucketServerWebhookModule());
-        bind(BaseWebhookService.class);
+        bind(JenkinsWebhookService.class);
 
         //oauth
         bind(OAuthAuthenticatorProvider.class).to(OAuthAuthenticatorProviderImpl.class);

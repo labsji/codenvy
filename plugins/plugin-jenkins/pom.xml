@@ -23,10 +23,10 @@
         <version>5.8.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>codenvy-plugin-ci-parent</artifactId>
+    <artifactId>codenvy-plugin-jenkins-parent</artifactId>
     <packaging>pom</packaging>
-    <name>Codenvy Plugin :: CI :: Parent</name>
+    <name>Codenvy Plugin :: Jenkins :: Parent</name>
     <modules>
-        <module>codenvy-plugin-ci-jenkins</module>
+        <module>codenvy-plugin-jenkins-webhooks</module>
     </modules>
 </project>

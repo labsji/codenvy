@@ -55,40 +55,36 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-@Path("/bitbucketserver-webhook")
-public class JencinsWebhookService extends BaseWebhookService {
+@Path("/jenkins-webhook")
+public class JenkinsWebhookService extends BaseWebhookService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JencinsWebhookService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JenkinsWebhookService.class);
 
     private static final String JENKINS_EVENT                     = "Jenkins-Event";
     private static final String WEBHOOK_PROPERTY_PATTERN          = "env.CODENVY_.+_WEBHOOK_.+";
-    private static final String JENKINS_CONNECTOR_PREFIX_PATTERN  = "env.CODENVY_JENKINS_CONNECTOR_.+";
     private static final String WEBHOOK_REPOSITORY_URL_SUFFIX     = "_REPOSITORY_URL";
     private static final String WEBHOOK_FACTORY_ID_SUFFIX_PATTERN = "_FACTORY.+_ID";
-    private static final String JENKINS_CONNECTOR_URL_SUFFIX      = "_URL";
-    private static final String JENKINS_CONNECTOR_JOB_NAME_SUFFIX = "_JOB_NAME";
 
+    private final FactoryManager factoryManager;
+    private final UserManager    userManager;
     private final ConfigurationProperties configurationProperties;
-    private final String                  username;
+    private final String baseUrl;
+    private final String username;
 
     @Inject
-    private FactoryManager factoryManager;
-
-    @Inject
-    private UserManager userManager;
-
-    @Inject
-    @Named("che.api")
-    private String baseUrl;
-
-    @Inject
-    public JencinsWebhookService(AuthConnection authConnection,
+    public JenkinsWebhookService(AuthConnection authConnection,
                                  FactoryConnection factoryConnection,
+                                 FactoryManager factoryManager,
+                                 UserManager userManager,
                                  ConfigurationProperties configurationProperties,
+                                 @Named("che.api") String baseUrl,
                                  @Named("integration.factory.owner.username") String username,
                                  @Named("integration.factory.owner.password") String password) {
         super(authConnection, factoryConnection, configurationProperties, username, password);
+        this.factoryManager = factoryManager;
+        this.userManager = userManager;
         this.configurationProperties = configurationProperties;
+        this.baseUrl = baseUrl;
         this.username = username;
     }
 
@@ -103,7 +99,6 @@ public class JencinsWebhookService extends BaseWebhookService {
                 updateFailedFactoriesForRepositoryAndBranch(getWebhookConfiguredFactoriesIDs(jenkinsEvent.getRepositoryUrl()),
                                                             jenkinsEvent);
             }
-
         } catch (IOException | ConflictException | NotFoundException e) {
             LOG.error(e.getLocalizedMessage());
             throw new ServerException(e.getLocalizedMessage());
@@ -130,7 +125,7 @@ public class JencinsWebhookService extends BaseWebhookService {
                           .collect(toSet());
 
         if (webhooks.isEmpty()) {
-            LOG.warn("No GitHub webhooks were registered for repository {}", repositoryUrl);
+            LOG.warn("No webhooks were registered for repository {}", repositoryUrl);
         }
 
         return properties.entrySet()
@@ -155,12 +150,12 @@ public class JencinsWebhookService extends BaseWebhookService {
         List<Factory> request;
         int skipCount = 0;
         do {
-            request = factoryManager.getByAttribute(30, skipCount, singletonList(Pair.of("creator.userId",
-                                                                                         userManager.getByName(username).getId())));
+            request = factoryManager.getByAttribute(30,
+                                                    skipCount,
+                                                    singletonList(Pair.of("creator.userId", userManager.getByName(username).getId())));
             factories.addAll(request);
             skipCount += request.size();
-        } while (!request.isEmpty());
-
+        } while (request.size() == 30);
 
         List<Factory> failedFactories =
                 factories.stream()

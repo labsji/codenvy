@@ -65,11 +65,11 @@ public class JenkinsWebhookService extends BaseWebhookService {
     private static final String WEBHOOK_REPOSITORY_URL_SUFFIX     = "_REPOSITORY_URL";
     private static final String WEBHOOK_FACTORY_ID_SUFFIX_PATTERN = "_FACTORY.+_ID";
 
-    private final FactoryManager factoryManager;
-    private final UserManager    userManager;
+    private final FactoryManager          factoryManager;
+    private final UserManager             userManager;
     private final ConfigurationProperties configurationProperties;
-    private final String baseUrl;
-    private final String username;
+    private final String                  baseUrl;
+    private final String                  username;
 
     @Inject
     public JenkinsWebhookService(AuthConnection authConnection,
@@ -117,12 +117,12 @@ public class JenkinsWebhookService extends BaseWebhookService {
     private Set<String> getWebhookConfiguredFactoriesIDs(final String repositoryUrl) {
         Map<String, String> properties = configurationProperties.getProperties(WEBHOOK_PROPERTY_PATTERN);
 
-        Set<String> webhooks =
-                properties.entrySet()
-                          .stream()
-                          .filter(entry -> repositoryUrl.equals(entry.getValue()))
-                          .map(entry -> entry.getKey().substring(0, entry.getKey().lastIndexOf(WEBHOOK_REPOSITORY_URL_SUFFIX)))
-                          .collect(toSet());
+        Set<String> webhooks = properties.entrySet()
+                                         .stream()
+                                         .filter(entry -> repositoryUrl.equals(entry.getValue()))
+                                         .map(entry -> entry.getKey()
+                                                            .substring(0, entry.getKey().lastIndexOf(WEBHOOK_REPOSITORY_URL_SUFFIX)))
+                                         .collect(toSet());
 
         if (webhooks.isEmpty()) {
             LOG.warn("No webhooks were registered for repository {}", repositoryUrl);
@@ -136,16 +136,7 @@ public class JenkinsWebhookService extends BaseWebhookService {
                          .collect(toSet());
     }
 
-    private void updateFailedFactoriesForRepositoryAndBranch(Set<String> factoryIDs, JenkinsEvent jenkinsEvent) throws ServerException,
-                                                                                                                       ConflictException,
-                                                                                                                       NotFoundException,
-                                                                                                                       IOException {
-        LOG.debug("{}", jenkinsEvent);
-
-        String repositoryUrl = jenkinsEvent.getRepositoryUrl();
-        String branch = jenkinsEvent.getBranch();
-        String commitId = jenkinsEvent.getCommitId();
-
+    private List<Factory> getUserFactories() throws NotFoundException, ServerException {
         List<Factory> factories = new ArrayList<>();
         List<Factory> request;
         int skipCount = 0;
@@ -156,33 +147,55 @@ public class JenkinsWebhookService extends BaseWebhookService {
             factories.addAll(request);
             skipCount += request.size();
         } while (request.size() == 30);
+        return factories;
+    }
 
-        List<Factory> failedFactories =
-                factories.stream()
-                         .filter(f -> f.getWorkspace()
-                                       .getProjects()
-                                       .stream()
-                                       .anyMatch(workspace -> repositoryUrl.equals(workspace.getSource().getLocation()) &&
-                                                              commitId.equals(workspace.getSource().getParameters().get("commitId"))))
-                         .collect(toList());
-        if (failedFactories.isEmpty()) {
-            List<FactoryDto> baseFactories = getFactoriesForRepositoryAndBranch(factoryIDs,
-                                                                                repositoryUrl,
-                                                                                branch,
-                                                                                DEFAULT_CLONE_URL_MATCHER);
-            for (FactoryDto factoryDto : baseFactories) {
-                FactoryDto updatedFactory = updateProjectInFactory(factoryDto,
-                                                                   repositoryUrl,
-                                                                   branch,
-                                                                   repositoryUrl,
-                                                                   commitId,
-                                                                   DEFAULT_CLONE_URL_MATCHER);
-                updatedFactory.setName("failed" + updatedFactory.getName());
-                failedFactories.add(factoryManager.saveFactory(updatedFactory));
-            }
+    private List<Factory> createFailedFactories(Set<String> factoryIDs,
+                                                String repositoryUrl,
+                                                String branch,
+                                                String commitId) throws ConflictException, ServerException {
+        List<FactoryDto> baseFactories = getFactoriesForRepositoryAndBranch(factoryIDs,
+                                                                            repositoryUrl,
+                                                                            branch,
+                                                                            DEFAULT_CLONE_URL_MATCHER);
+        List<Factory> failedFactories = new ArrayList<>();
+        for (FactoryDto factoryDto : baseFactories) {
+            FactoryDto updatedFactory = updateProjectInFactory(factoryDto,
+                                                               repositoryUrl,
+                                                               branch,
+                                                               repositoryUrl,
+                                                               commitId,
+                                                               DEFAULT_CLONE_URL_MATCHER);
+            updatedFactory.setName("failed" + updatedFactory.getName());
+            failedFactories.add(factoryManager.saveFactory(updatedFactory));
         }
+        return failedFactories;
+    }
 
-        for (Factory factory : failedFactories) {
+
+    private void updateFailedFactoriesForRepositoryAndBranch(Set<String> factoryIDs, JenkinsEvent jenkinsEvent) throws ServerException,
+                                                                                                                       ConflictException,
+                                                                                                                       NotFoundException,
+                                                                                                                       IOException {
+        LOG.debug("{}", jenkinsEvent);
+
+        String repositoryUrl = jenkinsEvent.getRepositoryUrl();
+        String branch = jenkinsEvent.getBranch();
+        String commitId = jenkinsEvent.getCommitId();
+
+        List<Factory> failedFactories = getUserFactories().stream()
+                                                          .filter(f -> f.getWorkspace()
+                                                                        .getProjects()
+                                                                        .stream()
+                                                                        .anyMatch(workspace -> repositoryUrl.equals(workspace.getSource()
+                                                                                                                             .getLocation()) &&
+                                                                                               commitId.equals(
+                                                                                                       workspace.getSource().getParameters()
+                                                                                                                .get("commitId"))))
+                                                          .collect(toList());
+
+        for (Factory factory : failedFactories.isEmpty() ? createFailedFactories(factoryIDs, repositoryUrl, branch, commitId)
+                                                         : failedFactories) {
             List<Connector> connectors = getConnectorsByUrl(jenkinsEvent.getJenkinsUrl());
             for (Connector connector : connectors) {
                 connector.addBuildFailedFactoryLink(baseUrl.substring(0, baseUrl.indexOf("/api")) + "/f?id=" + factory.getId());

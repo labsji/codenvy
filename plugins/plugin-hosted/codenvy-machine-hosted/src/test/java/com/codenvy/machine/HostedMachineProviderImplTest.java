@@ -16,6 +16,8 @@ package com.codenvy.machine;
 
 import com.codenvy.machine.authentication.server.MachineTokenRegistry;
 
+import org.eclipse.che.api.core.jsonrpc.RequestTransmitter;
+import org.eclipse.che.api.core.util.JsonRpcEndpointIdsHolder;
 import org.eclipse.che.api.core.util.LineConsumer;
 import org.eclipse.che.api.environment.server.model.CheServiceImpl;
 import org.eclipse.che.api.machine.server.util.RecipeRetriever;
@@ -61,7 +63,7 @@ import static org.testng.Assert.assertNotNull;
 public class HostedMachineProviderImplTest {
 
     @Mock
-    private DockerConnectorProvider dockerConnectorProviderMock;
+    private DockerConnectorProvider                       dockerConnectorProviderMock;
     @Mock
     private DockerConnector                               dockerConnector;
     @Mock
@@ -72,6 +74,10 @@ public class HostedMachineProviderImplTest {
     private DockerInstanceStopDetector                    dockerInstanceStopDetector;
     @Mock
     private DockerContainerNameGenerator                  containerNameGenerator;
+    @Mock
+    private RequestTransmitter                            requestTransmitter;
+    @Mock
+    private JsonRpcEndpointIdsHolder                      endpointIdsHolder;
     @Mock
     private DockerNode                                    dockerNode;
     @Mock
@@ -121,6 +127,8 @@ public class HostedMachineProviderImplTest {
                                                  dockerMachineFactory,
                                                  dockerInstanceStopDetector,
                                                  windowsPathEscaper,
+                                                 requestTransmitter,
+                                                 endpointIdsHolder,
                                                  emptySet(),
                                                  emptySet(),
                                                  emptySet(),
@@ -160,6 +168,8 @@ public class HostedMachineProviderImplTest {
                                                  dockerMachineFactory,
                                                  dockerInstanceStopDetector,
                                                  windowsPathEscaper,
+                                                 requestTransmitter,
+                                                 endpointIdsHolder,
                                                  emptySet(),
                                                  emptySet(),
                                                  emptySet(),

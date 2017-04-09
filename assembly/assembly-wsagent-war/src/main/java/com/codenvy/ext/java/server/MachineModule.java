@@ -31,6 +31,7 @@ import org.eclipse.che.api.auth.oauth.OAuthTokenProvider;
 import org.eclipse.che.api.core.jsonrpc.BuildingRequestTransmitter;
 import org.eclipse.che.api.core.jsonrpc.JsonRpcFactory;
 import org.eclipse.che.api.core.jsonrpc.JsonRpcMessageReceiver;
+import org.eclipse.che.api.core.jsonrpc.JsonRpcModule;
 import org.eclipse.che.api.core.jsonrpc.RequestHandlerConfigurator;
 import org.eclipse.che.api.core.rest.ApiInfoService;
 import org.eclipse.che.api.core.rest.CoreRestModule;
@@ -38,6 +39,7 @@ import org.eclipse.che.api.core.rest.HttpJsonRequestFactory;
 import org.eclipse.che.api.core.util.FileCleaner.FileCleanerModule;
 import org.eclipse.che.api.core.websocket.WebSocketMessageReceiver;
 import org.eclipse.che.api.core.websocket.WebSocketMessageTransmitter;
+import org.eclipse.che.api.core.websocket.WebSocketModule;
 import org.eclipse.che.api.core.websocket.impl.BasicWebSocketMessageTransmitter;
 import org.eclipse.che.api.core.websocket.impl.GuiceInjectorEndpointConfigurator;
 import org.eclipse.che.api.git.GitConnectionFactory;
@@ -90,6 +92,8 @@ public class MachineModule extends AbstractModule {
         install(new MavenModule());
         install(new GitHubModule());
         install(new MicrosoftModule());
+        install(new WebSocketModule());
+        install(new JsonRpcModule());
         install(new org.eclipse.che.swagger.deploy.DocsModule());
         install(new org.eclipse.che.api.debugger.server.DebuggerModule());
 
@@ -127,9 +131,6 @@ public class MachineModule extends AbstractModule {
 
         bind(String.class).annotatedWith(Names.named("wsagent.endpoint"))
                           .toProvider(com.codenvy.api.agent.WsAgentURLProvider.class);
-
-        configureJsonRpc();
-        configureWebSocket();
     }
 
     //it's need for WSocketEventBusClient and in the future will be replaced with the property
@@ -146,24 +147,5 @@ public class MachineModule extends AbstractModule {
     @SuppressWarnings("unchecked")
     Pair<String, String>[] propagateEventsProvider(@Named("event.bus.url") String eventBusURL) {
         return new Pair[] {Pair.of(eventBusURL, "")};
-    }
-
-    private void configureWebSocket() {
-        requestStaticInjection(GuiceInjectorEndpointConfigurator.class);
-
-        bind(WebSocketMessageTransmitter.class).to(BasicWebSocketMessageTransmitter.class);
-        bind(WebSocketMessageReceiver.class).to(JsonRpcMessageReceiver.class);
-    }
-
-    private void configureJsonRpc() {
-        install(new FactoryModuleBuilder().build(JsonRpcFactory.class));
-        install(new FactoryModuleBuilder().build(RequestHandlerConfigurator.class));
-        install(new FactoryModuleBuilder().build(BuildingRequestTransmitter.class));
-    }
-
-    @Provides
-    @Singleton
-    public JsonParser jsonParser(){
-        return new JsonParser();
     }
 }

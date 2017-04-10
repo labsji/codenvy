@@ -66,15 +66,15 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.che.core</groupId>
-            <artifactId>che-core-api-factory-shared</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.che.core</groupId>
             <artifactId>che-core-api-model</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.che.core</groupId>
             <artifactId>che-core-api-user</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.che.core</groupId>
+            <artifactId>che-core-api-workspace</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.che.core</groupId>
@@ -90,17 +90,6 @@
         </dependency>
     </dependencies>
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/java</directory>
-            </resource>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>${generated.sources.directory}</directory>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
                 <groupId>org.eclipse.che.core</groupId>

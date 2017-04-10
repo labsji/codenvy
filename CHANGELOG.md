@@ -1,5 +1,31 @@
 # Change Log
 
+## [5.7.1](https://github.com/codenvy/codenvy/tree/5.7.1) (2017-04-08)
+[Full Changelog](https://github.com/codenvy/codenvy/compare/5.7.0...5.7.1)
+
+**Pull requests merged:**
+- fix situation when redirect_after_login contains hash [2062](https://github.com/codenvy/codenvy/pull/2062)
+
+## [5.7.0](https://github.com/codenvy/codenvy/tree/5.7.0) (2017-04-06)
+[Full Changelog](https://github.com/codenvy/codenvy/compare/5.6.0...5.7.0)
+
+**Pull requests merged:**
+
+- Added factory images used in links, Pull Requests etc [2056](https://github.com/codenvy/codenvy/pull/2056)
+- remove unused code [2046](https://github.com/codenvy/codenvy/pull/2046)
+- Do not log exception about workspace restoring interruption when user stops workspace while it starting. [2042](https://github.com/codenvy/codenvy/pull/2042)
+- Make che-plugin-product-info optional for IDE [2041](https://github.com/codenvy/codenvy/pull/2041)
+- Rework code in accordance to changes in Che. [2039](https://github.com/codenvy/codenvy/pull/2039)
+- apply branding to top/bottom banners [2034](https://github.com/codenvy/codenvy/pull/2034)
+- Use thymeleaf templates and processor in email notifications [2033](https://github.com/codenvy/codenvy/pull/2033)
+- Improve checking sudo in rsync backup scripts [2023](https://github.com/codenvy/codenvy/pull/2023)
+- fix zookeeper logs issue [2022](https://github.com/codenvy/codenvy/pull/2022)
+- fix reset password [2019](https://github.com/codenvy/codenvy/pull/2019)
+- Allowed to use single hyphen in the middle of organization name [2016](https://github.com/codenvy/codenvy/pull/2016)
+- Add workaround for bug in Swarm when exec can't be found by Swarm [2011](https://github.com/codenvy/codenvy/pull/2011)
+- Allow PR panel and integration plugins to use BitBucket repos created from projects not just users. [2000](https://github.com/codenvy/codenvy/pull/2000)
+- Added Factory capability to Che. [1913](https://github.com/codenvy/codenvy/pull/1913)
+
 ## [5.6.0](https://github.com/codenvy/codenvy/tree/5.6.0) (2017-03-30)
 [Full Changelog](https://github.com/codenvy/codenvy/compare/5.5.0...5.6.0)
 

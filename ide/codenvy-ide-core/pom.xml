@@ -42,16 +42,6 @@
         <dependency>
             <groupId>org.eclipse.che.core</groupId>
             <artifactId>che-ide-core</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>che-plugin-sdk-env-local</artifactId>
-                    <groupId>org.eclipse.che.plugin</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>che-plugin-product-info</artifactId>
-                    <groupId>org.eclipse.che.plugin</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
     <build>

@@ -64,10 +64,6 @@
                     <artifactId>che-wsagent-core</artifactId>
                     <groupId>org.eclipse.che.core</groupId>
                 </exclusion>
-                <exclusion>
-                    <artifactId>che-plugin-sdk-env-local</artifactId>
-                    <groupId>org.eclipse.che.plugin</groupId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>

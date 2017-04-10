@@ -15,15 +15,13 @@
 package com.codenvy.plugin.jenkins.webhooks;
 
 import com.codenvy.plugin.jenkins.webhooks.shared.JenkinsEvent;
-import com.codenvy.plugin.webhooks.AuthConnection;
-import com.codenvy.plugin.webhooks.FactoryConnection;
-import com.codenvy.plugin.webhooks.BaseWebhookService;
-import com.codenvy.plugin.webhooks.connectors.Connector;
+import com.codenvy.plugin.webhooks.connectors.JenkinsConnector;
 
 import org.eclipse.che.api.core.ConflictException;
 import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.model.factory.Factory;
+import org.eclipse.che.api.core.rest.Service;
 import org.eclipse.che.api.factory.server.FactoryManager;
 import org.eclipse.che.api.factory.server.model.impl.FactoryImpl;
 import org.eclipse.che.api.user.server.UserManager;
@@ -46,17 +44,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/jenkins-webhook")
-public class JenkinsWebhookService extends BaseWebhookService {
+public class JenkinsWebhookService extends Service{
 
     private static final Logger LOG = LoggerFactory.getLogger(JenkinsWebhookService.class);
 
@@ -64,27 +62,24 @@ public class JenkinsWebhookService extends BaseWebhookService {
     private static final String WEBHOOK_PROPERTY_PATTERN          = "env.CODENVY_.+_WEBHOOK_.+";
     private static final String WEBHOOK_REPOSITORY_URL_SUFFIX     = "_REPOSITORY_URL";
     private static final String WEBHOOK_FACTORY_ID_SUFFIX_PATTERN = "_FACTORY.+_ID";
+    private static final String JENKINS_CONNECTOR_PREFIX_PATTERN  = "env.CODENVY_JENKINS_CONNECTOR_.+";
+    private static final String JENKINS_CONNECTOR_URL_SUFFIX      = "_URL";
+    private static final String JENKINS_CONNECTOR_JOB_NAME_SUFFIX = "_JOB_NAME";
 
     private final FactoryManager          factoryManager;
     private final UserManager             userManager;
     private final ConfigurationProperties configurationProperties;
-    private final String                  baseUrl;
     private final String                  username;
 
     @Inject
-    public JenkinsWebhookService(AuthConnection authConnection,
-                                 FactoryConnection factoryConnection,
-                                 FactoryManager factoryManager,
+    public JenkinsWebhookService(FactoryManager factoryManager,
                                  UserManager userManager,
                                  ConfigurationProperties configurationProperties,
                                  @Named("che.api") String baseUrl,
-                                 @Named("integration.factory.owner.username") String username,
-                                 @Named("integration.factory.owner.password") String password) {
-        super(authConnection, factoryConnection, configurationProperties, username, password);
+                                 @Named("integration.factory.owner.username") String username) {
         this.factoryManager = factoryManager;
         this.userManager = userManager;
         this.configurationProperties = configurationProperties;
-        this.baseUrl = baseUrl;
         this.username = username;
     }
 
@@ -172,26 +167,47 @@ public class JenkinsWebhookService extends BaseWebhookService {
                                                                                                IOException {
         LOG.debug("{}", jenkinsEvent);
 
-        String repositoryUrl = jenkinsEvent.getRepositoryUrl();
-        String commitId = jenkinsEvent.getCommitId();
+        String jenkinsUrl = jenkinsEvent.getJenkinsUrl();
 
-        List<Factory> failedFactories =
-                getUserFactories().stream()
-                                  .filter(f -> f.getWorkspace()
-                                                .getProjects()
-                                                .stream()
-                                                .anyMatch(workspace -> repositoryUrl.equals(workspace.getSource().getLocation()) &&
-                                                                       commitId.equals(workspace.getSource()
-                                                                                                .getParameters()
-                                                                                                .get("commitId"))))
-                                  .collect(toList());
+        String repositoryUrl;
+        String commitId;
 
-        for (Factory factory : failedFactories.isEmpty() ? createFailedFactories(repositoryUrl, commitId) : failedFactories) {
-            List<Connector> connectors = getConnectorsByUrl(jenkinsEvent.getJenkinsUrl());
-            for (Connector connector : connectors) {
-                connector.addBuildFailedFactoryLink(baseUrl.substring(0, baseUrl.indexOf("/api")) + "/f?id=" + factory.getId());
-            }
+
+        Map<String, String> properties = configurationProperties.getProperties(JENKINS_CONNECTOR_PREFIX_PATTERN);
+
+        Optional<JenkinsConnector> optional =
+                properties.entrySet()
+                          .stream()
+                          .filter(e -> e.getValue().contains(jenkinsUrl.substring(jenkinsUrl.indexOf("://") + 3, jenkinsUrl.length() - 1)))
+                          .map(entry -> {
+                              String connector = entry.getKey().substring(0, entry.getKey().lastIndexOf(JENKINS_CONNECTOR_URL_SUFFIX));
+                              return new JenkinsConnector(properties.get(connector + JENKINS_CONNECTOR_URL_SUFFIX),
+                                                          properties.get(connector + JENKINS_CONNECTOR_JOB_NAME_SUFFIX));
+                          })
+                          .findAny();
+        if (optional.isPresent()) {
+            JenkinsConnector jenkinsConnector = optional.get();
+            String buildInfo = jenkinsConnector.getBuildInfo(jenkinsEvent.getBuildId());
+            commitId = buildInfo.substring(buildInfo.indexOf("SHA1"), )
         }
+
+//        List<Factory> failedFactories =
+//                getUserFactories().stream()
+//                                  .filter(f -> f.getWorkspace()
+//                                                .getProjects()
+//                                                .stream()
+//                                                .anyMatch(workspace -> repositoryUrl.equals(workspace.getSource().getLocation()) &&
+//                                                                       commitId.equals(workspace.getSource()
+//                                                                                                .getParameters()
+//                                                                                                .get("commitId"))))
+//                                  .collect(toList());
+//
+//        for (Factory factory : failedFactories.isEmpty() ? createFailedFactories(repositoryUrl, commitId) : failedFactories) {
+//            List<Connector> connectors = getConnectorsByUrl(jenkinsEvent.getJenkinsUrl());
+//            for (Connector connector : connectors) {
+//                connector.addBuildFailedFactoryLink(baseUrl.substring(0, baseUrl.indexOf("/api")) + "/f?id=" + factory.getId());
+//            }
+//        }
     }
 
 }

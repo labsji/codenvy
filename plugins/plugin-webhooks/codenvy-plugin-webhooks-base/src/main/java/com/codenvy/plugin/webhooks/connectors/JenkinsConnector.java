@@ -16,6 +16,8 @@ package com.codenvy.plugin.webhooks.connectors;
 
 import com.google.common.io.CharStreams;
 
+import org.apache.commons.io.IOUtils;
+import org.eclipse.che.api.core.ServerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -39,7 +41,6 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.rmi.ServerException;
 import java.util.Base64;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
@@ -59,7 +60,7 @@ public class JenkinsConnector implements Connector {
     // The name of the Jenkins job
     private final String jobName;
     // The URL of the XML configuration of the Jenkins job
-    private final String jobConfigXmlUrl;
+    private final String url;
 
     /**
      * Constructor
@@ -71,11 +72,11 @@ public class JenkinsConnector implements Connector {
      */
     public JenkinsConnector(final String url, final String jobName) {
         this.jobName = jobName;
-        this.jobConfigXmlUrl = url + "/job/" + jobName + "/config.xml";
+        this.url = url;
     }
 
     @Override
-    public void addFactoryLink(String factoryUrl) throws IOException {
+    public void addFactoryLink(String factoryUrl) throws IOException, ServerException {
         Document configDocument = xmlToDocument(getCurrentJenkinsJobConfiguration());
         Node descriptionNode = configDocument.getDocumentElement().getElementsByTagName("description").item(0);
 
@@ -87,7 +88,7 @@ public class JenkinsConnector implements Connector {
     }
 
     @Override
-    public void addBuildFailedFactoryLink(String factoryUrl) throws IOException {
+    public void addBuildFailedFactoryLink(String factoryUrl) throws IOException, ServerException {
         Document configDocument = xmlToDocument(getCurrentJenkinsJobConfiguration());
         Node descriptionNode = configDocument.getDocumentElement().getElementsByTagName("description").item(0);
         String content = descriptionNode.getTextContent();
@@ -100,8 +101,41 @@ public class JenkinsConnector implements Connector {
         }
     }
 
+    @Override
+    public String getBuildInfo(int buildId) throws IOException, ServerException {
+        URL url = new URL(this.url + "/job/" + jobName + "/" + buildId + "/api/json");
+        HttpURLConnection http = (HttpURLConnection)url.openConnection();
+        try {
+
+            http = (HttpURLConnection)url.openConnection();
+            http.setInstanceFollowRedirects(false);
+            http.setRequestMethod("GET");
+
+            if (url.getUserInfo() != null) {
+                String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
+                http.setRequestProperty("Authorization", basicAuth);
+            }
+
+            if (http.getResponseCode() / 100 != 2) {
+                throw new ServerException("");
+            }
+
+            String result;
+            try (InputStream input = http.getInputStream()) {
+                result = IOUtils.toString(input);
+            }
+
+            return result;
+
+        } finally {
+            if (http != null) {
+                http.disconnect();
+            }
+        }
+    }
+
     private String getCurrentJenkinsJobConfiguration() throws IOException {
-        URL url = new URL(jobConfigXmlUrl);
+        URL url = new URL(this.url + "/job/" + jobName + "/config.xml");
         HttpURLConnection connection = (HttpURLConnection)url.openConnection();
         if (url.getUserInfo() != null) {
             String basicAuth = "Basic " + new String(Base64.getEncoder().encode(url.getUserInfo().getBytes()));
@@ -124,8 +158,8 @@ public class JenkinsConnector implements Connector {
         return readAndCloseQuietly(connection.getInputStream());
     }
 
-    private void updateJenkinsJobDescription(String factoryUrl, Document configDocument) throws IOException {
-        URL url = new URL(jobConfigXmlUrl);
+    private void updateJenkinsJobDescription(String factoryUrl, Document configDocument) throws IOException, ServerException {
+        URL url = new URL(this.url);
         HttpURLConnection connection = (HttpURLConnection)url.openConnection();
         try {
             if (url.getUserInfo() != null) {

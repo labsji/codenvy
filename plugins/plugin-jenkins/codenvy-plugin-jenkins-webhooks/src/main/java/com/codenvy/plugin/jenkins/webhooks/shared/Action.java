@@ -16,17 +16,15 @@ package com.codenvy.plugin.jenkins.webhooks.shared;
 
 import org.eclipse.che.dto.shared.DTO;
 
+import java.util.List;
+
 @DTO
-public interface JenkinsEvent {
-    String getJobName();
+public interface Action {
+    LastBuiltRevision getLastBuiltRevision();
 
-    void setJobName(String jobName);
+    void setLastBuiltRevision(LastBuiltRevision lastBuiltRevision);
 
-    int getBuildId();
+    List<String> getRemoteUrls();
 
-    void setBuildId(int buildId);
-
-    String getJenkinsUrl();
-
-    void setJenkinsUrl(String jenkinsUrl);
+    void setRemoteUrls(List<String> remoteUrls);
 }

@@ -14,6 +14,8 @@
  */
 package com.codenvy.plugin.webhooks.connectors;
 
+import org.eclipse.che.api.core.ServerException;
+
 import java.io.IOException;
 
 /**
@@ -29,7 +31,7 @@ public interface Connector {
      * @param factoryUrl
      *         the factory URL to add
      */
-    void addFactoryLink(String factoryUrl) throws IOException;
+    void addFactoryLink(String factoryUrl) throws IOException, ServerException;
 
     /**
      * Add a factory link to the third-party service
@@ -37,5 +39,7 @@ public interface Connector {
      * @param factoryUrl
      *         the factory URL to add
      */
-    void addBuildFailedFactoryLink(String factoryUrl) throws IOException;
+    void addBuildFailedFactoryLink(String factoryUrl) throws IOException, ServerException;
+
+    String getBuildInfo(int buildId) throws IOException, ServerException;
 }

@@ -14,8 +14,7 @@
  */
 package com.codenvy.plugin.webhooks;
 
-import com.codenvy.plugin.webhooks.connectors.Connector;
-import com.codenvy.plugin.webhooks.connectors.JenkinsConnector;
+import com.codenvy.plugin.jenkins.webhooks.JenkinsConnector;
 
 import org.eclipse.che.api.auth.shared.dto.Token;
 import org.eclipse.che.api.core.ForbiddenException;
@@ -186,7 +185,7 @@ public abstract class BaseWebhookService extends Service {
      * @param factoryId
      * @return the list of all configured connectors
      */
-    protected List<Connector> getConnectors(String factoryId) throws ServerException {
+    protected List<JenkinsConnector> getConnectors(String factoryId) throws ServerException {
 
         Map<String, String> properties = configurationProperties.getProperties(JENKINS_CONNECTOR_PREFIX_PATTERN);
 
@@ -205,31 +204,6 @@ public abstract class BaseWebhookService extends Service {
         return connectors.stream()
                          .map(connector -> createJenkinsConnector(properties, connector))
                          .collect(toList());
-    }
-
-    /**
-     * Get all configured connectors by url.
-     *
-     * @param connectorUrl
-     *         url of the connector
-     * @return the list of all configured connectors that mach given url.
-     */
-    protected List<Connector> getConnectorsByUrl(String connectorUrl) throws ServerException {
-
-        Map<String, String> properties = configurationProperties.getProperties(JENKINS_CONNECTOR_PREFIX_PATTERN);
-
-        Set<String> connectors =
-                properties.entrySet()
-                          .stream()
-                          .filter(entry -> entry.getValue().contains(connectorUrl.substring(connectorUrl.indexOf("://") + 3)))
-                          .map(entry -> entry.getKey().substring(0, entry.getKey().lastIndexOf(JENKINS_CONNECTOR_URL_SUFFIX)))
-                          .collect(Collectors.toSet());
-
-        if (connectors.isEmpty()) {
-            LOG.error("No connectors was registered for url {}", connectorUrl);
-        }
-
-        return connectors.stream().map(connector -> createJenkinsConnector(properties, connector)).collect(toList());
     }
 
     private JenkinsConnector createJenkinsConnector(Map<String, String> properties, String connector) {

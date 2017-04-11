@@ -14,6 +14,7 @@
  */
 package com.codenvy.plugin.webhooks.bitbucketserver;
 
+import com.codenvy.plugin.jenkins.webhooks.JenkinsConnector;
 import com.codenvy.plugin.webhooks.AuthConnection;
 import com.codenvy.plugin.webhooks.FactoryConnection;
 import com.codenvy.plugin.webhooks.BaseWebhookService;
@@ -23,7 +24,6 @@ import com.codenvy.plugin.webhooks.bitbucketserver.shared.Project;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.PushEvent;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.RefChange;
 import com.codenvy.plugin.webhooks.bitbucketserver.shared.Repository;
-import com.codenvy.plugin.webhooks.connectors.Connector;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.eclipse.che.api.core.ServerException;
@@ -148,7 +148,7 @@ public class BitbucketServerWebhookService extends BaseWebhookService {
                 LOG.warn("Factory " + factory.getId() + " do not contain mandatory \'" + FACTORY_URL_REL + "\' link");
                 continue;
             }
-            for (Connector connector : getConnectors(factory.getId())) {
+            for (JenkinsConnector connector : getConnectors(factory.getId())) {
                 connector.addFactoryLink(factoryLink.getHref());
             }
         }

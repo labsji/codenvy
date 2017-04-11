@@ -30,6 +30,10 @@
     <dependencies>
         <dependency>
             <groupId>com.codenvy.plugin</groupId>
+            <artifactId>codenvy-plugin-jenkins-webhooks</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.codenvy.plugin</groupId>
             <artifactId>codenvy-plugin-webhooks-base</artifactId>
         </dependency>
         <dependency>

@@ -29,10 +29,6 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>com.codenvy.plugin</groupId>
-            <artifactId>codenvy-plugin-webhooks-base</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>

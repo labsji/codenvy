@@ -20,10 +20,10 @@ import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 
+import com.codenvy.plugin.jenkins.webhooks.JenkinsConnector;
 import com.codenvy.plugin.webhooks.AuthConnection;
 import com.codenvy.plugin.webhooks.FactoryConnection;
 import com.codenvy.plugin.webhooks.BaseWebhookService;
-import com.codenvy.plugin.webhooks.connectors.Connector;
 import com.codenvy.plugin.webhooks.github.shared.PullRequestEvent;
 import com.codenvy.plugin.webhooks.github.shared.PushEvent;
 
@@ -167,7 +167,7 @@ public class GitHubWebhookService extends BaseWebhookService {
             }
 
             // Add factory link within third-party services
-            for (Connector connector : getConnectors(f.getId())) {
+            for (JenkinsConnector connector : getConnectors(f.getId())) {
                 connector.addFactoryLink(factoryLink.getHref());
             }
         }

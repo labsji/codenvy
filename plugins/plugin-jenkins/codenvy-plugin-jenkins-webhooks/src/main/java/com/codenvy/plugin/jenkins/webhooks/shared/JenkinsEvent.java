@@ -29,4 +29,8 @@ public interface JenkinsEvent {
     String getJenkinsUrl();
 
     void setJenkinsUrl(String jenkinsUrl);
+
+    String getRepositoryUrl();
+
+    void setRepositoryUrl(String repositoryUrl);
 }

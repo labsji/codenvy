@@ -126,33 +126,6 @@
       <navbar-recent-workspaces></navbar-recent-workspaces>
       <navbar-teams flex layout="column" layout-aling="start strength"></navbar-teams>
 
-      <div ng-show="codenvyNavbarController.isAdminServiceAvailable" class="admin-navbar-menu"
-           ng-init="configMenuIsExpand=true">
-        <div class="navbar-identity"
-             flex layout="row" layout-align="start center" ng-click="configMenuIsExpand=!configMenuIsExpand">
-          <span flex layout="row" layout-align="start center" layout-padding>
-            <i class="material-design icon-ic_build_24px">&nbsp;</i>
-            <span flex class="navbar-title">Configuration</span>
-          </span>
-          <i class="material-design md-tab-themed"
-             ng-class="configMenuIsExpand ? 'icon-ic_expand_less_24px' : 'icon-ic_expand_more_24px'">
-            &nbsp;</i>
-        </div>
-        <section class="animation navbar-subsection"
-                 flex layout="column" layout-align="center start" layout-fill
-                 class="animation"
-                 ng-if="configMenuIsExpand">
-          <md-list layout="column" flex>
-            <md-list-item ng-show="codenvyNavbarController.isAdminPluginServiceAvailable" flex class="navbar-subsection-item">
-              <md-button nav-bar-selected flex che-reload-href
-                         href="{{codenvyNavbarController.menuItemUrl.plugins}}" layout-align="left">
-                <div class="navbar-item" layout="row" layout-align="start center">Plug-Ins</div>
-              </md-button>
-            </md-list-item>
-          </md-list>
-        </section>
-      </div>
-
       <div class="admin-navbar-menu">
         <section class="left-sidebar-menu navbar-account-section">
           <md-list layout="column" flex>

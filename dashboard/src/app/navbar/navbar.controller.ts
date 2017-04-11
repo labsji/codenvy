@@ -58,10 +58,8 @@ export class CodenvyNavBarController {
   }];
   displayLoginItem: boolean;
   onpremAdminExpanded: boolean;
-  isAdminServiceAvailable: boolean;
   isFactoryServiceAvailable: boolean;
   isBillingServiceAvailable: boolean;
-  isAdminPluginServiceAvailable: boolean;
 
   private $scope: ng.IScope;
   private $window: ng.IWindowService;
@@ -118,12 +116,6 @@ export class CodenvyNavBarController {
           url: '#/billing'
         });
       }
-    });
-
-    let promiseAdminService = this.cheAPI.getAdminService().fetchServices();
-    promiseAdminService.then(() => {
-      this.isAdminServiceAvailable = cheAPI.getAdminService().isAdminServiceAvailable();
-      this.isAdminPluginServiceAvailable = cheAPI.getAdminService().isServiceAvailable(cheAPI.getAdminPlugins().getPluginsServicePath());
     });
 
     this.profile = cheAPI.getProfile().getProfile();
